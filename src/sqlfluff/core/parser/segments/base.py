@@ -818,7 +818,17 @@ class BaseSegment:
                 )
 
             # Basic Validation, that we haven't dropped anything.
-            check_still_complete(segments, m.matched_segments, m.unmatched_segments)
+            try:
+                check_still_complete(segments, m.matched_segments, m.unmatched_segments)
+            except RuntimeError:
+                # If segments were dropped during parsing, treat the entire input as unparsable
+                # instead of crashing. This handles cases like double semicolons gracefully.
+                self.segments = (
+                    pre_nc
+                    + (UnparsableSegment(segments=segments, expected="valid SQL"),)
+                    + post_nc
+                )
+                return self
 
             if m.has_match():
                 if m.is_complete():
@@ -1163,3 +1173,4 @@ class BaseFileSegment(BaseSegment):
     def file_path(self):
         """File path of a parsed SQL file."""
         return self._file_path
+
